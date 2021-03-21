@@ -10,6 +10,9 @@ import sys
 import time
 import argparse
 import subprocess
+import yaml
+from orderedattrdict import AttrDict
+
 
 # nagios return codes
 OK       = 0
@@ -30,6 +33,29 @@ errstat_to_str = {
     CRITICAL : 'CRITICAL',
     UNKNOWN  : 'UNKNOWN'
 }
+
+def ordered_load(stream, Loader=yaml.Loader, object_pairs_hook=AttrDict):
+    """
+    Load Yaml document, replace all hashes/mappings with AttrDict
+    """
+    class Ordered_Loader(Loader):
+        pass
+
+    def construct_mapping(loader, node):
+        loader.flatten_mapping(node)
+        return object_pairs_hook(loader.construct_pairs(node))
+    Ordered_Loader.add_constructor(
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+        construct_mapping)
+    return yaml.load(stream, Ordered_Loader)
+
+def yaml_load(filename):
+    with open(filename, "r") as f:
+        try:
+            data = ordered_load(f, yaml.SafeLoader)
+            return data
+        except yaml.YAMLError as err:
+            raise UtilException("Cannot load YAML file %s, err: %s" % (filename, err))
 
 
 class Response:
